@@ -1,0 +1,18 @@
+# Exported from Render on 2024-06-30T09:34:10Z
+services:
+- type: web
+  name: RishabhBlog1
+  runtime: node
+  repo: https://github.com/Rishabhsharma2004/SynStream1
+  plan: free
+  envVars:
+  - key: VITE_FIREBASE_API_KEY
+    sync: false
+  - key: JWT_SECRET
+    sync: false
+  - key: MONGO
+    sync: false
+  region: oregon
+  buildCommand: npm run build
+  startCommand: node strat
+version: "1"
