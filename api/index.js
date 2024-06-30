@@ -5,6 +5,7 @@ import userRoutes from "./routes/user.route.js";
 import authRoutes from "./routes/auth.route.js";
 import cookieParser from "cookie-parser";
 import postRoutes from './routes/post.route.js';
+import path from 'path'
 dotenv.config();
 
 mongoose
@@ -16,7 +17,7 @@ mongoose
   });
 
   
-
+const __dirname = path.resolve();
 const app = express();
 
 app.use(express.json());
@@ -29,6 +30,10 @@ app.listen(5000, () => {
 app.use('/api/user', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/post', postRoutes);
+app.use(express.static(path.join(__dirname, '/SynStream/dist')));
+app.get('*', (req, res)=>{
+  res.sendFile(path.join(__dirname, 'SynStream', 'dist', 'index.html'));
+})
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
