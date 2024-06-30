@@ -6,4 +6,5 @@ import { verifyToken } from '../utills/verifyUser.js';
  router.get('/test',test);
  router.put('/update/:userId',verifyToken, updateUser);
  
+
  export default router;
