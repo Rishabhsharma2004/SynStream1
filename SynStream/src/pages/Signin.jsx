@@ -1,96 +1,166 @@
-import { Alert, Button, Label, Spinner, TextInput } from "flowbite-react";
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { signInStart, signInSuccess, signInFailure } from "../redux/user/userSlice";
-import OAuth from '../component/OAuth'
-export default function SignIn() {
-  const [formData, setformData] = useState({});
-  const {loading, error: errorMessage} = useSelector(state => state.user);
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const handleChange = (e) =>{
-    setformData({...formData, [e.target.id]: e.target.value.trim()});
-  }
+import { Button, Select, TextInput } from 'flowbite-react';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import PostCard from '../components/PostCard';
 
-  const handleSubmit = async (e) =>{
-    e.preventDefault();
-    if(!formData.email || !formData.password){
-      return dispatch(signInFailure('Please fill out all fields.'));
-    }
-    try{
-     dispatch(signInStart());
-      const res = await fetch('/api/auth/signin',{
-        method : 'POST',
-        headers : {'Content-Type' : 'application/json'},
-        body : JSON.stringify(formData),
+export default function Search() {
+  const [sidebarData, setSidebarData] = useState({
+    searchTerm: '',
+    sort: 'desc',
+    category: 'uncategorized',
+  });
+
+  console.log(sidebarData);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+
+  const location = useLocation();
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const searchTermFromUrl = urlParams.get('searchTerm');
+    const sortFromUrl = urlParams.get('sort');
+    const categoryFromUrl = urlParams.get('category');
+    if (searchTermFromUrl || sortFromUrl || categoryFromUrl) {
+      setSidebarData({
+        ...sidebarData,
+        searchTerm: searchTermFromUrl,
+        sort: sortFromUrl,
+        category: categoryFromUrl,
       });
-      const data = await res.json();
-      if(data.success === false){
-        dispatch(signInFailure(data.message));
-      }
-      if(res.ok){
-        dispatch(signInSuccess(data));
-        navigate('/');
-      }
-    }catch(error){ 
-      dispatch(signInFailure(error.message));
     }
-  }
+
+    const fetchPosts = async () => {
+      setLoading(true);
+      const searchQuery = urlParams.toString();
+      const res = await fetch(`/api/post/getposts?${searchQuery}`);
+      if (!res.ok) {
+        setLoading(false);
+        return;
+      }
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(data.posts);
+        setLoading(false);
+        if (data.posts.length === 9) {
+          setShowMore(true);
+        } else {
+          setShowMore(false);
+        }
+      }
+    };
+    fetchPosts();
+  }, [location.search]);
+
+  const handleChange = (e) => {
+    if (e.target.id === 'searchTerm') {
+      setSidebarData({ ...sidebarData, searchTerm: e.target.value });
+    }
+    if (e.target.id === 'sort') {
+      const order = e.target.value || 'desc';
+      setSidebarData({ ...sidebarData, sort: order });
+    }
+    if (e.target.id === 'category') {
+      const category = e.target.value || 'uncategorized';
+      setSidebarData({ ...sidebarData, category });
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const urlParams = new URLSearchParams(location.search);
+    urlParams.set('searchTerm', sidebarData.searchTerm);
+    urlParams.set('sort', sidebarData.sort);
+    urlParams.set('category', sidebarData.category);
+    const searchQuery = urlParams.toString();
+    navigate(`/search?${searchQuery}`);
+  };
+
+  const handleShowMore = async () => {
+    const numberOfPosts = posts.length;
+    const startIndex = numberOfPosts;
+    const urlParams = new URLSearchParams(location.search);
+    urlParams.set('startIndex', startIndex);
+    const searchQuery = urlParams.toString();
+    const res = await fetch(`/api/post/getposts?${searchQuery}`);
+    if (!res.ok) {
+      return;
+    }
+    if (res.ok) {
+      const data = await res.json();
+      setPosts([...posts, ...data.posts]);
+      if (data.posts.length === 9) {
+        setShowMore(true);
+      } else {
+        setShowMore(false);
+      }
+    }
+  };
+
   return (
-    <div className="min-h-screen mt-20">
-      <div className="flex p-3 max-w-3xl mx-auto flex-col md:flex-row md:item-center gap-5">
-        {/* left */}
-        <div className="flex-1">
-          <Link to="/" className="  font-bold dark:text-white text-4xl">
-            <span className="px-2 py-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-lg text-white">
-              Sahand's
-            </span>{" "}
-            Blog
-          </Link>
-          <p className="text-sm mt-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Amet sint
-            debitis ipsum molestiae. Laboriosam quod praesentium commodi.
-            Numquam quae, odit ipsam hic, omnis rerum, earum commodi sit
-            accusantium veniam in!
-          </p>
-        </div>
-        {/* right */}
-        <div className="flex-1">
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            <div>
-              <Label value="Your email" />
-              <TextInput placeholder="name@gamil.com" type="email" id="email" onChange={handleChange} />
-            </div>
-            <div>
-              <Label value="Your password" />
-              <TextInput placeholder="........." type="password" id="password" onChange={handleChange} />
-            </div>
-            <Button gradientDuoTone="purpleToPink" type="submit" disabled ={loading}>
-             {
-              loading ?(
-              <>
-                <Spinner size='sm'/>
-                <span className= 'pl-3'>Loding...</span>
-              </>
-              ): 'Sign In'
-             }
-            </Button>
-            <OAuth />
-          </form>
-          <div className="flex gap-2 text-sm mt-5">
-            <span>Dont Have an account?</span>
-            <Link to="/sign-up" className="text-blue-500">
-              Sign Up
-            </Link>
+    <div className='flex flex-col md:flex-row'>
+      <div className='p-7 border-b md:border-r md:min-h-screen border-gray-500'>
+        <form className='flex flex-col gap-8' onSubmit={handleSubmit}>
+          <div className='flex   items-center gap-2'>
+            <label className='whitespace-nowrap font-semibold'>
+              Search Term:
+            </label>
+            <TextInput
+              placeholder='Search...'
+              id='searchTerm'
+              type='text'
+              value={sidebarData.searchTerm}
+              onChange={handleChange}
+            />
           </div>
-          {
-            errorMessage &&(
-              <Alert className='mt-5' color= 'failure'>
-                {errorMessage}
-              </Alert>
-            )
-          }
+          <div className='flex items-center gap-2'>
+            <label className='font-semibold'>Sort:</label>
+            <Select onChange={handleChange} value={sidebarData.sort} id='sort'>
+              <option value='desc'>Latest</option>
+              <option value='asc'>Oldest</option>
+            </Select>
+          </div>
+          <div className='flex items-center gap-2'>
+            <label className='font-semibold'>Category:</label>
+            <Select
+              onChange={handleChange}
+              value={sidebarData.category}
+              id='category'
+            >
+              <option value='uncategorized'>Uncategorized</option>
+              <option value='reactjs'>React.js</option>
+              <option value='nextjs'>Next.js</option>
+              <option value='javascript'>JavaScript</option>
+            </Select>
+          </div>
+          <Button type='submit' outline gradientDuoTone='purpleToPink'>
+            Apply Filters
+          </Button>
+        </form>
+      </div>
+      <div className='w-full'>
+        <h1 className='text-3xl font-semibold sm:border-b border-gray-500 p-3 mt-5 '>
+          Posts results:
+        </h1>
+        <div className='p-7 flex flex-wrap gap-4'>
+          {!loading && posts.length === 0 && (
+            <p className='text-xl text-gray-500'>No posts found.</p>
+          )}
+          {loading && <p className='text-xl text-gray-500'>Loading...</p>}
+          {!loading &&
+            posts &&
+            posts.map((post) => <PostCard key={post._id} post={post} />)}
+          {showMore && (
+            <button
+              onClick={handleShowMore}
+              className='text-teal-500 text-lg hover:underline p-7 w-full'
+            >
+              Show More
+            </button>
+          )}
         </div>
       </div>
     </div>
